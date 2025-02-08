@@ -1,1 +1,1 @@
-web: 
+web: hackathon-agentic-brevis

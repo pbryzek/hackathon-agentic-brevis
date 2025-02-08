@@ -3,4 +3,4 @@ build:
     - go
 
 run:
-  web: brevis
+  web: hackathon-agentic-brevis
