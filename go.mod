@@ -1,10 +1,12 @@
-module github.com/pbryzek/hackathon-agentic-brevis
+module brevis_api
 
 go 1.23.6
 
 require (
+	github.com/aws/aws-sdk-go v1.49.16
 	github.com/brevis-network/brevis-sdk v0.3.24
 	github.com/ethereum/go-ethereum v1.14.8
+	github.com/joho/godotenv v1.5.1
 )
 
 require (
@@ -53,6 +55,7 @@ require (
 	github.com/ingonyama-zk/icicle v0.1.1-0.20240120093837-db9eff751859 // indirect
 	github.com/ingonyama-zk/iciclegnark v0.1.2-0.20240120100015-8653136f9db4 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.5.4 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -70,6 +73,7 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rs/cors v1.11.1 // indirect
 	github.com/rs/zerolog v1.30.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
