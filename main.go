@@ -66,11 +66,22 @@ func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		estimatedEmissions := big.NewInt(10000)
+		handlePrepareDownload()
+		
+		// Parse the query parameter
+		estimatedEmissionsStr := r.URL.Query().Get("ai-carbon-footprint")
+
+		// Convert string to float (assuming emissions are numeric)
+		estimatedEmissions, err := strconv.ParseFloat(estimatedEmissionsStr, 64)
+		if err != nil {
+			http.Error(w, "Invalid ai-carbon-footprint parameter", http.StatusBadRequest)
+			return
+		}
+
 		circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
 		outDir := "./brevis-circuit"
-		srsDir := "./brevis-srs"
+		srsDir := "./"
 
 		// Ensure the SRS directory exists
 		if _, err := os.Stat(srsDir); os.IsNotExist(err) {
@@ -113,7 +124,15 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	estimatedEmissions := big.NewInt(10000)
+	// Parse the query parameter
+	estimatedEmissionsStr := r.URL.Query().Get("ai-carbon-footprint")
+
+	// Convert string to float (assuming emissions are numeric)
+	estimatedEmissions, err := strconv.ParseFloat(estimatedEmissionsStr, 64)
+	if err != nil {
+		http.Error(w, "Invalid ai-carbon-footprint parameter", http.StatusBadRequest)
+		return
+	}
 	circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
 	circuitInput, err := app.BuildCircuitInput(circuit)
