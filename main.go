@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/brevis-network/brevis-sdk/sdk"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +17,11 @@ import (
 type AppCircuit struct {
 	EmissionsData *big.Int
 }
+
+var (
+	circuitPrepared bool
+	circuitMutex    sync.Mutex
+)
 
 var _ sdk.AppCircuit = &AppCircuit{}
 
@@ -42,7 +48,53 @@ func (c *AppCircuit) Define(api *sdk.CircuitAPI, in sdk.DataInput) error {
 	return nil
 }
 
+func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
+	go func() {
+		circuitMutex.Lock()
+		defer circuitMutex.Unlock()
+
+		if circuitPrepared {
+			log.Println("Circuit already prepared.")
+			return
+		}
+
+		rpcURL := "https://sepolia.drpc.org"
+		outputDir := "./brevis-output"
+		app, err := sdk.NewBrevisApp(11155111, rpcURL, outputDir)
+		if err != nil {
+			log.Printf("Error initializing BrevisApp: %v", err)
+			return
+		}
+
+		estimatedEmissions := big.NewInt(10000)
+		circuit := &AppCircuit{EmissionsData: estimatedEmissions}
+
+		outDir := "./brevis-circuit"
+		srsDir := "./brevis-srs"
+		_, _, _, _, err = sdk.Compile(circuit, outDir, srsDir, app)
+		if err != nil {
+			log.Printf("Error compiling circuit: %v", err)
+			return
+		}
+
+		circuitPrepared = true
+		log.Println("Circuit preparation complete.")
+	}()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Circuit preparation started."))
+}
+
 func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
+	circuitMutex.Lock()
+	prepared := circuitPrepared
+	circuitMutex.Unlock()
+
+	if !prepared {
+		http.Error(w, "Circuit not prepared yet. Please try again later.", http.StatusBadRequest)
+		return
+	}
+
 	rpcURL := "https://sepolia.drpc.org"
 	outputDir := "./brevis-output"
 	app, err := sdk.NewBrevisApp(11155111, rpcURL, outputDir)
@@ -51,7 +103,7 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	estimatedEmissions := big.NewInt(10000) // Example emissions
+	estimatedEmissions := big.NewInt(10000)
 	circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
 	circuitInput, err := app.BuildCircuitInput(circuit)
@@ -60,26 +112,21 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	outDir := "./brevis-circuit"
-	srsDir := "./brevis-srs"
-	compiledCircuit, pk, vk, _, err := sdk.Compile(circuit, outDir, srsDir, app)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error compiling circuit: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Log unused variables to satisfy Go's compiler
-	log.Printf("Compiled Circuit and PK generated but not directly used: %v, %v", compiledCircuit, pk)
-
 	witness, _, err := sdk.NewFullWitness(circuit, circuitInput)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error generating witness: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	proof, err := sdk.Prove(compiledCircuit, pk, witness)
+	proof, err := sdk.Prove(nil, nil, witness)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error generating proof: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = app.SubmitProof(proof)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error submitting proof: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -87,16 +134,10 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 	refundAddress := common.HexToAddress("0x788997cD5b9feAc56d4928539Dc21C637C61E69a")
 
 	_, requestId, feeValue, _, err := app.PrepareRequest(
-		vk, witness, 11155111, 11155111, refundAddress, tokenAddress, 500000, nil, "",
+		nil, witness, 11155111, 11155111, refundAddress, tokenAddress, 500000, nil, "",
 	)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error preparing request: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	err = app.SubmitProof(proof)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error submitting proof: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -119,9 +160,10 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" 
+		port = "8080"
 	}
 
+	http.HandleFunc("/prepare-download", handlePrepareDownload)
 	http.HandleFunc("/submit-proof", handleSubmitProof)
 
 	log.Printf("Server running on port %s", port)
