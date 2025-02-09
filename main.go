@@ -65,19 +65,8 @@ func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error initializing BrevisApp: %v", err)
 			return
 		}
-
-		handlePrepareDownload()
 		
-		// Parse the query parameter
-		estimatedEmissionsStr := r.URL.Query().Get("ai-carbon-footprint")
-
-		// Convert string to float (assuming emissions are numeric)
-		estimatedEmissions, err := strconv.ParseFloat(estimatedEmissionsStr, 64)
-		if err != nil {
-			http.Error(w, "Invalid ai-carbon-footprint parameter", http.StatusBadRequest)
-			return
-		}
-
+		estimatedEmissions := big.NewInt(10000)
 		circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
 		outDir := "./brevis-circuit"
@@ -124,15 +113,7 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse the query parameter
-	estimatedEmissionsStr := r.URL.Query().Get("ai-carbon-footprint")
-
-	// Convert string to float (assuming emissions are numeric)
-	estimatedEmissions, err := strconv.ParseFloat(estimatedEmissionsStr, 64)
-	if err != nil {
-		http.Error(w, "Invalid ai-carbon-footprint parameter", http.StatusBadRequest)
-		return
-	}
+	estimatedEmissions := big.NewInt(10000)
 	circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
 	circuitInput, err := app.BuildCircuitInput(circuit)
