@@ -71,6 +71,16 @@ func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
 
 		outDir := "./brevis-circuit"
 		srsDir := "./brevis-srs"
+
+		// Ensure the SRS directory exists
+		if _, err := os.Stat(srsDir); os.IsNotExist(err) {
+			if err := os.Mkdir(srsDir, os.ModePerm); err != nil {
+				log.Fatalf("Error creating directory: %v", err)
+			}
+		}
+
+		log.Println("Using SRS directory:", srsDir)
+
 		_, _, _, _, err = sdk.Compile(circuit, outDir, srsDir, app)
 		if err != nil {
 			log.Printf("Error compiling circuit: %v", err)
