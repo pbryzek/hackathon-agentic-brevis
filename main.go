@@ -12,7 +12,6 @@ import (
 
 	"github.com/brevis-network/brevis-sdk/sdk"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/rs/cors" 
 )
 
 type AppCircuit struct {
@@ -66,7 +65,7 @@ func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error initializing BrevisApp: %v", err)
 			return
 		}
-
+		
 		estimatedEmissions := big.NewInt(10000)
 		circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
@@ -174,21 +173,11 @@ func main() {
 		port = "8080"
 	}
 
-	corsHandler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"}, // Replace "*" with specific domains for better security
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type"},
-		AllowCredentials: true,
-	})
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/prepare-download", handlePrepareDownload)
-	mux.HandleFunc("/submit-proof", handleSubmitProof)
-
-	handler := corsHandler.Handler(mux)
+	http.HandleFunc("/prepare-download", handlePrepareDownload)
+	http.HandleFunc("/submit-proof", handleSubmitProof)
 
 	log.Printf("Server running on port %s", port)
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
