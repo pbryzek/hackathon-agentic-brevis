@@ -1,4 +1,4 @@
-module brevis_api
+module github.com/pbryzek/hackathon-agentic-brevis
 
 go 1.23.6
 
