@@ -49,53 +49,54 @@ func (c *AppCircuit) Define(api *sdk.CircuitAPI, in sdk.DataInput) error {
 }
 
 func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
-	go func() {
-		circuitMutex.Lock()
-		defer circuitMutex.Unlock()
+	enableCors(&w)
+	circuitMutex.Lock()
+	defer circuitMutex.Unlock()
 
-		if circuitPrepared {
-			log.Println("Circuit already prepared.")
-			return
+	if circuitPrepared {
+		log.Println("Circuit already prepared.")
+		return
+	}
+
+	rpcURL := "https://sepolia.drpc.org"
+	outputDir := "./brevis-output"
+	app, err := sdk.NewBrevisApp(11155111, rpcURL, outputDir)
+	if err != nil {
+		log.Printf("Error initializing BrevisApp: %v", err)
+		return
+	}
+	
+	estimatedEmissions := big.NewInt(10000)
+	circuit := &AppCircuit{EmissionsData: estimatedEmissions}
+
+	outDir := "./brevis-circuit"
+	srsDir := "./"
+
+	// Ensure the SRS directory exists
+	if _, err := os.Stat(srsDir); os.IsNotExist(err) {
+		if err := os.Mkdir(srsDir, os.ModePerm); err != nil {
+			log.Fatalf("Error creating directory: %v", err)
 		}
+	}
 
-		rpcURL := "https://sepolia.drpc.org"
-		outputDir := "./brevis-output"
-		app, err := sdk.NewBrevisApp(11155111, rpcURL, outputDir)
-		if err != nil {
-			log.Printf("Error initializing BrevisApp: %v", err)
-			return
-		}
-		
-		estimatedEmissions := big.NewInt(10000)
-		circuit := &AppCircuit{EmissionsData: estimatedEmissions}
+	log.Println("Using SRS directory:", srsDir)
 
-		outDir := "./brevis-circuit"
-		srsDir := "./"
+	_, _, _, _, err = sdk.Compile(circuit, outDir, srsDir, app)
+	if err != nil {
+		log.Printf("Error compiling circuit: %v", err)
+		return
+	}
 
-		// Ensure the SRS directory exists
-		if _, err := os.Stat(srsDir); os.IsNotExist(err) {
-			if err := os.Mkdir(srsDir, os.ModePerm); err != nil {
-				log.Fatalf("Error creating directory: %v", err)
-			}
-		}
-
-		log.Println("Using SRS directory:", srsDir)
-
-		_, _, _, _, err = sdk.Compile(circuit, outDir, srsDir, app)
-		if err != nil {
-			log.Printf("Error compiling circuit: %v", err)
-			return
-		}
-
-		circuitPrepared = true
-		log.Println("Circuit preparation complete.")
-	}()
+	circuitPrepared = true
+	log.Println("Circuit preparation complete.")
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Circuit preparation started."))
 }
 
 func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+
 	circuitMutex.Lock()
 	prepared := circuitPrepared
 	circuitMutex.Unlock()
@@ -165,6 +166,10 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func main() {
