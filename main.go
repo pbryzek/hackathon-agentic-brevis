@@ -71,7 +71,7 @@ func handlePrepareDownload(w http.ResponseWriter, r *http.Request) {
 		circuit := &AppCircuit{EmissionsData: estimatedEmissions}
 
 		outDir := "./brevis-circuit"
-		srsDir := "./brevis-srs"
+		srsDir := "./"
 
 		// Ensure the SRS directory exists
 		if _, err := os.Stat(srsDir); os.IsNotExist(err) {
